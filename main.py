@@ -9,10 +9,30 @@ import sys
 
 import numpy as np
 
+from utils import for_birds as birds
+from utils import for_cifar10 as cifar10
+from utils import for_dogs as dogs
 from utils import for_plankton as fplankton
+from utils import for_wildtrap as wildtrap
 from utils import model_training as mt
 from utils import prepare_train_test_data as pdata
+from utils import for_inaturalist as inature
+from utils import for_cifar100 as cifar100
 
+
+def ArgsCheck(args):
+    """ Consistency checks for command line arguments """
+
+    if args.ttkind != 'image' and args.aug == True:
+        print('User asked for data augmentation, but we set it to False, because we only do it for `image` models')
+        args.aug = False
+
+    if args.ttkind == 'image':
+        args.compute_extrafeat = 'no'
+        print(
+            'User asked for computing extra features, but we set it to False, because we only do it for `mixed` '
+            'models')
+    return
 
 
 class LoadInputParameters:
@@ -28,6 +48,7 @@ class LoadInputParameters:
         self.model = None
         self.opt = None
         self.SetParameters(mode=initMode)
+
         return
 
     def SetParameters(self, mode='default'):
@@ -45,7 +66,7 @@ class LoadInputParameters:
         if string is None:
             string = ""
 
-        parser = argparse.ArgumentParser(description='Train a model on Zoolake2 dataset')
+        parser = argparse.ArgumentParser(description='Create Dataset')
 
         parser.add_argument('-datapaths', nargs='*',
                             default=['./data/1_zooplankton_0p5x/training/zooplankton_trainingset_2020.04.28/'],
@@ -69,7 +90,7 @@ class LoadInputParameters:
                             help="Which data to load: features, images, or both")
         parser.add_argument('-ttkind', choices=['mixed', 'feat', 'image'], default=None,
                             help="Which data to use in the test and training sets: features, images, or both")
-        parser.add_argument('-training_data', choices=['yes', 'no'], default='no',
+        parser.add_argument('-training_data', choices=['True', 'False'], default='False',
                             help="This is to cope with the different directory structures")
         parser.add_argument('-aug_type', choices=['low', 'medium', 'high'],
                             default='low', help='Choose the augmentations intensity levels ( "low", "medium", "high")')
@@ -162,12 +183,14 @@ class LoadInputParameters:
             args.datapaths[i] = elem + '/'
 
         args.outpath = args.outpath + '/'
-        args.training_data = True if args.training_data == 'yes' else False
+        args.training_data = True if args.training_data == 'True' else False
 
+        ArgsCheck(args)
         self.params = args
 
         if self.verbose:
             print(args)
+
         return
 
     def CreateOutDir(self):
@@ -186,6 +209,17 @@ class LoadInputParameters:
         np.save(self.params.outpath + '/params.npy', self.params)
         return
 
+    def UpdateParams(self, **kwargs):
+        """ Updates the parameters given in kwargs, and updates params.txt"""
+        self.paramsDict = vars(self.params)
+        if kwargs is not None:
+            for key, value in kwargs.items():
+                self.paramsDict[key] = value
+        self.CreateOutDir()
+        self.WriteParams()
+
+        return
+
 
 if __name__ == '__main__':
     print('\nRunning', sys.argv[0], sys.argv[1:])
@@ -197,21 +231,58 @@ if __name__ == '__main__':
     #
     loaded_data = None
 
+    if train_params.params.dataset_name == 'zoolake':
 
-    if os.path.exists(train_params.params.outpath + '/Data.pickle'):
-        print('USING PREVIOUSLY SAVED DATA!')
-        loaded_data = fplankton.CreateDataForPlankton()
-        loaded_data.make_train_test_for_model(train_params, None)
-        loaded_data.create_data_loaders(train_params)
-    else:
-        print('Creating dataset using input parameters')
+        if os.path.exists(train_params.params.outpath + '/Data.pickle'):
+            print('USING PREVIOUSLY SAVED DATA!')
+            loaded_data = fplankton.CreateDataForPlankton()
+            loaded_data.make_train_test_for_model(train_params, None)
+            loaded_data.create_data_loaders(train_params)
+        else:
+            print('Creating dataset using input parameters')
+            prep_data = pdata.CreateDataset()
+            prep_data.LoadData(train_params)
+            prep_data.CreateTrainTestSets(train_params)
+            # For Plankton
+            loaded_data = fplankton.CreateDataForPlankton()
+            loaded_data.make_train_test_for_model(train_params, prep_data)
+            loaded_data.create_data_loaders(train_params)
+
+    elif train_params.params.dataset_name == 'beetle':
         prep_data = pdata.CreateDataset()
-        prep_data.LoadData(train_params)
-        prep_data.CreateTrainTestSets(train_params)
-        # For Plankton
+        prep_data.LoadData_for_others(train_params)
+        prep_data.CreatedataSetsForOthers(train_params)
+
         loaded_data = fplankton.CreateDataForPlankton()
-        loaded_data.make_train_test_for_model(train_params, prep_data)
-        loaded_data.create_data_loaders(train_params)
+        loaded_data.make_train_test_for_others(prep_data)
+        loaded_data.create_data_loaders_for_others(train_params)
+
+    elif train_params.params.dataset_name == 'cifar10':
+        loaded_data = cifar10.CreateDataForCifar10()
+        loaded_data.make_train_test_for_cifar(train_params)
+
+    elif train_params.params.dataset_name == 'cifar100':
+        loaded_data = cifar100.CreateDataForCifar100()
+        loaded_data.make_train_test_for_cifar(train_params)
+
+    elif train_params.params.dataset_name == 'inature':
+        loaded_data = inature.CreateDataForinature()
+        loaded_data.make_train_test_for_inature(train_params)
+
+    elif train_params.params.dataset_name == 'wildtrap':
+        loaded_data = wildtrap.CreateDataForWildtrap()
+        loaded_data.make_train_test_for_wildtrap(train_params)
+
+    elif train_params.params.dataset_name == 'dogs':
+        loaded_data = dogs.CreateDataForDogs()
+        loaded_data.make_train_test_for_dogs(train_params)
+
+    elif train_params.params.dataset_name == 'birds':
+        loaded_data = birds.CreateDataForBirds()
+        loaded_data.make_train_test_for_birds(train_params)
+
+    else:
+        print('Choose correct dataset name')
 
     # Model Training
     model_training = mt.import_and_train_model()

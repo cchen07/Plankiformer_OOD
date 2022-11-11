@@ -12,6 +12,7 @@ from utils import prepare_data_for_testing as pdata_test
 from utils import for_plankton_test as fplankton_test
 from utils import model_training as mt
 import main as main_train
+import streamlit as st
 from time import time
 
 time_begin = time()
