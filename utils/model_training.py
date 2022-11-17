@@ -53,24 +53,52 @@ class import_and_train_model:
         if train_main.params.architecture == 'deit':
             self.model = timm.create_model('deit_base_distilled_patch16_224', pretrained=True,
                                            num_classes=len(np.unique(classes)))
-        elif train_main.params.architecture == 'cnn':
+        elif train_main.params.architecture == 'efficientnet':
             self.model = timm.create_model('tf_efficientnet_b7', pretrained=True,
+                                           num_classes=len(np.unique(classes)))
+        elif train_main.params.architecture == 'densenet':
+            self.model = timm.create_model('densenet161', pretrained=True,
+                                           num_classes=len(np.unique(classes)))
+        elif train_main.params.architecture == 'mobilenet':
+            self.model = timm.create_model('mobilenetv3_large_100_miil', pretrained=True,
+                                           num_classes=len(np.unique(classes)))
+        elif train_main.params.architecture == 'inception':
+            self.model = timm.create_model('inception_v4', pretrained=True,
+                                           num_classes=len(np.unique(classes)))
+        elif train_main.params.architecture == 'vit':
+            self.model = timm.create_model('vit_base_patch8_224', pretrained=True,
                                            num_classes=len(np.unique(classes)))
         else:
             print('This model cannot be imported. Please check from the list of models')
 
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available() and train_main.params.gpu_id == 0:
+            device = torch.device("cuda:0")
+        elif torch.cuda.is_available() and train_main.params.gpu_id == 1:
+            device = torch.device("cuda:1")
+        else:
+            device = torch.cuda("cpu")
+        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # model = nn.DataParallel(model) # to run on multiple GPUs
         self.model.to(device)
 
         if train_main.params.last_layer_finetune == 'yes':
+            # for param in self.model.parameters():
+            #     param.requires_grad = False
+            # i = 1
+            # for param in self.model.parameters():
+            #     if i > 709:
+            #         param.requires_grad = True
+            #     i = i + 1
+
+            n_layer = 0
             for param in self.model.parameters():
+                n_layer += 1
                 param.requires_grad = False
-            i = 1
-            for param in self.model.parameters():
-                if i > 709:
+
+            for i, param in enumerate(self.model.parameters()):
+                if i + 1 > n_layer - 2: 
                     param.requires_grad = True
-                i = i + 1
+
         else:
             for param in self.model.parameters():
                 param.requires_grad = True
@@ -111,16 +139,35 @@ class import_and_train_model:
         if train_main.params.architecture == 'deit':
             self.model = timm.create_model('deit_base_distilled_patch16_224', pretrained=True,
                                            num_classes=len(np.unique(classes)))
-        elif train_main.params.architecture == 'cnn':
+        elif train_main.params.architecture == 'efficientnet':
             self.model = timm.create_model('tf_efficientnet_b7', pretrained=True,
+                                           num_classes=len(np.unique(classes)))
+        elif train_main.params.architecture == 'densenet':
+            self.model = timm.create_model('densenet161', pretrained=True,
+                                           num_classes=len(np.unique(classes)))
+        elif train_main.params.architecture == 'mobilenet':
+            self.model = timm.create_model('mobilenetv3_large_100_miil', pretrained=True,
+                                           num_classes=len(np.unique(classes)))
+        elif train_main.params.architecture == 'inception':
+            self.model = timm.create_model('inception_v4', pretrained=True,
+                                           num_classes=len(np.unique(classes)))
+        elif train_main.params.architecture == 'vit':
+            self.model = timm.create_model('vit_base_patch8_224', pretrained=True,
                                            num_classes=len(np.unique(classes)))
         else:
             print('This model cannot be imported. Please check from the list of models')
 
-        if torch.cuda.is_available() and train_main.params.use_gpu == 'yes':
+        if torch.cuda.is_available() and train_main.params.gpu_id == 0:
             device = torch.device("cuda:0")
+        elif torch.cuda.is_available() and train_main.params.gpu_id == 1:
+            device = torch.device("cuda:1")
         else:
-            device = torch.device("cpu")
+            device = torch.cuda("cpu")
+
+        # if torch.cuda.is_available() and train_main.params.use_gpu == 'yes':
+        #     device = torch.device("cuda:0")
+        # else:
+        #     device = torch.device("cpu")
 
         # model = nn.DataParallel(model)
         self.model.to(device)
@@ -133,7 +180,7 @@ class import_and_train_model:
         print(f"{total_trainable_params:,} training parameters.")
         class_weights_tensor = torch.load(test_main.params.main_param_path + '/class_weights_tensor.pt')
         self.criterion = nn.CrossEntropyLoss(class_weights_tensor)
-        gpu_id = 1
+        gpu_id = train_main.params.gpu_id
         if torch.cuda.is_available() and train_main.params.use_gpu == 'yes':
             torch.cuda.set_device(gpu_id)
             self.model.cuda(gpu_id)
@@ -164,7 +211,7 @@ class import_and_train_model:
 
         for epoch in range(initial_epoch, epochs):
             time_begin_epoch = time()
-            print('EPOCH : {} / {}'.format(epoch + 1, epochs))
+            print('EPOCH: {} / {}'.format(epoch + 1, epochs))
 
             adjust_learning_rate(self.optimizer, epoch, lr, train_main.params.warmup,
                                  train_main.params.disable_cos, epochs)
@@ -259,12 +306,28 @@ class import_and_train_model:
                                                           np.round(train_f1, 3),
                                                           np.round(train_loss, 3),
                                                           np.round(test_accuracy, 3)))
-            print('[Test] Acc:{}, F1:{}, loss:{}, epoch time (in mins) :{}, cumulative time (in mins):{}'.format(
+            print('[Val] Acc:{}, F1:{}, loss:{}, epoch time (in mins) :{}, cumulative time (in mins):{}'.format(
                 np.round(test_accuracy, 3),
                 np.round(test_f1, 3),
                 np.round(test_loss, 3),
                 np.round(total_mins_per_epoch, 3),
                 np.round(total_mins, 3)))
+
+            plt.figure(figsize=(15, 4))
+            plt.subplot(1, 3, 1)
+            plt.plot(train_accuracies, label='Train accuracy')
+            plt.plot(test_accuracies, label='Validation accuracy')
+            plt.legend()
+            plt.subplot(1, 3, 2)
+            plt.plot(train_f1s, label='Train F1')
+            plt.plot(test_f1s, label='Validation F1')
+            plt.legend()
+            plt.subplot(1, 3, 3)
+            plt.plot(train_losses, label='Train loss')
+            plt.plot(test_losses, label='Validation loss')
+            plt.legend()
+            plt.savefig(data_loader.checkpoint_path + '/updated_performance_curves_' + name + '.png')
+            plt.close()
 
             if train_main.params.run_lr_scheduler == 'yes':
                 self.lr_scheduler(train_loss)
@@ -296,19 +359,19 @@ class import_and_train_model:
         test_losses = Logs[2]
         test_f1s = Logs[5]
 
-        plt.figure(figsize=(10, 3))
+        # plt.figure(figsize=(10, 3))
 
-        plt.subplot(1, 2, 1)
-        plt.plot(train_losses, label='Training loss')
-        plt.subplot(1, 2, 1)
-        plt.plot(test_losses, label='Validation loss')
+        # plt.subplot(1, 2, 1)
+        # plt.plot(train_losses, label='Training loss')
+        # plt.subplot(1, 2, 1)
+        # plt.plot(test_losses, label='Validation loss')
 
-        plt.subplot(1, 2, 2)
-        plt.plot(train_f1s, label='Training F1')
-        plt.subplot(1, 2, 2)
-        plt.plot(test_f1s, label='Validation F1')
+        # plt.subplot(1, 2, 2)
+        # plt.plot(train_f1s, label='Training F1')
+        # plt.subplot(1, 2, 2)
+        # plt.plot(test_f1s, label='Validation F1')
 
-        plt.savefig(data_loader.checkpoint_path + '/performance_curves_' + name + '.png')
+        # plt.savefig(data_loader.checkpoint_path + '/performance_curves_' + name + '.png')
 
     def run_prediction(self, data_loader, name):
         # classes = np.load(train_main.params.outpath + '/classes.npy')
@@ -429,14 +492,23 @@ class import_and_train_model:
                                   data_loader=data_loader, lr=train_main.params.finetune_lr)
 
             if train_main.params.last_layer_finetune_1 == 'yes':
-                for param in self.model.parameters():
-                    param.requires_grad = False  ### CHANGED HERE
+                # for param in self.model.parameters():
+                #     param.requires_grad = False  ### CHANGED HERE
 
-                i = 1
+                # i = 1
+                # for param in self.model.parameters():
+                #     if i > 709:
+                #         param.requires_grad = True
+                #     i = i + 1
+
+                n_layer = 0
                 for param in self.model.parameters():
-                    if i > 709:
+                    n_layer += 1
+                    param.requires_grad = False
+
+                for i, param in enumerate(self.model.parameters()):
+                    if i + 1 > n_layer - 2: 
                         param.requires_grad = True
-                    i = i + 1
 
             else:
                 for param in self.model.parameters():
@@ -455,14 +527,24 @@ class import_and_train_model:
                                   data_loader=data_loader, lr=train_main.params.finetune_lr / 10)
 
             if train_main.params.last_layer_finetune_2 == 'yes':
-                for param in self.model.parameters():
-                    param.requires_grad = False  ### CHANGED HERE
+                # for param in self.model.parameters():
+                #     param.requires_grad = False  ### CHANGED HERE
 
-                i = 1
+                # i = 1
+                # for param in self.model.parameters():
+                #     if i > 709:
+                #         param.requires_grad = True
+                #     i = i + 1
+
+                n_layer = 0
                 for param in self.model.parameters():
-                    if i > 709:
+                    n_layer += 1
+                    param.requires_grad = False
+
+                for i, param in enumerate(self.model.parameters()):
+                    if i + 1 > n_layer - 2: 
                         param.requires_grad = True
-                    i = i + 1
+
 
             else:
                 for param in self.model.parameters():
@@ -522,12 +604,14 @@ class import_and_train_model:
                     self.init_train_predict(train_main, data_loader, 2)
                 else:
                     print('If you want to retrain then set "resume from saved" to "yes"')
+                    self.run_prediction(data_loader, 'finetuned')
 
             elif train_main.params.finetune == 0:
                 if not os.path.exists(model_present_path0):
                     self.train_predict(train_main, data_loader, 0)
                 else:
                     print('If you want to retrain then set "resume from saved" to "yes"')
+                    self.run_prediction(data_loader, 'original')
 
             elif train_main.params.finetune == 1:
                 if not os.path.exists(model_present_path0):
@@ -541,6 +625,7 @@ class import_and_train_model:
                     self.init_train_predict(train_main, data_loader, 1)
                 else:
                     print('If you want to retrain then set "resume from saved" to "yes"')
+                    self.run_prediction(data_loader, 'tuned')
 
         elif train_main.params.resume_from_saved == 'yes':
             if train_main.params.finetune == 0:
@@ -1007,7 +1092,10 @@ class import_and_train_model:
     def initialize_model(self, train_main, test_main, data_loader, lr):
         if torch.cuda.is_available():
             if train_main.params.use_gpu == 'yes' or test_main.params.use_gpu == 'yes':
-                device = torch.device("cuda:0")
+                if train_main.params.gpu_id == 0:
+                    device = torch.device("cuda:0")
+                elif train_main.params.gpu_id == 1:
+                    device = torch.device("cuda:1")
         else:
             device = torch.device("cpu")
 
@@ -1022,9 +1110,9 @@ class import_and_train_model:
             self.criterion = nn.CrossEntropyLoss(class_weights_tensor)
 
         if torch.cuda.is_available() and train_main.params.use_gpu == 'yes':
-            torch.cuda.set_device(0)
-            self.model.cuda(0)
-            self.criterion = self.criterion.cuda(0)
+            torch.cuda.set_device(train_main.params.gpu_id)
+            self.model.cuda(train_main.params.gpu_id)
+            self.criterion = self.criterion.cuda(train_main.params.gpu_id)
         # Observe that all parameters are being optimized
         if train_main.params.last_layer_finetune == 'yes':
             self.optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, self.model.parameters()),
@@ -1221,7 +1309,10 @@ def cls_train(train_main, train_loader, model, criterion, optimizer, clip_grad_n
 
     for i, (images, target) in enumerate(train_loader):
         if torch.cuda.is_available() and train_main.params.use_gpu == 'yes':
-            device = torch.device("cuda:0")
+            if train_main.params.gpu_id == 0:
+                device = torch.device("cuda:0")
+            elif train_main.params.gpu_id == 1:
+                device = torch.device("cuda:1")
         else:
             device = torch.device("cpu")
         images, target = images.to(device), target.to(device)
@@ -1275,7 +1366,10 @@ def cls_validate(train_main, val_loader, model, criterion, time_begin=None):
     with torch.no_grad():
         for i, (images, target) in enumerate(val_loader):
             if torch.cuda.is_available() and train_main.params.use_gpu == 'yes':
-                device = torch.device("cuda:0")
+                if train_main.params.gpu_id == 0:
+                    device = torch.device("cuda:0")
+                elif train_main.params.gpu_id == 1:
+                    device = torch.device("cuda:1")
             else:
                 device = torch.device("cpu")
 

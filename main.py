@@ -9,15 +9,9 @@ import sys
 
 import numpy as np
 
-from utils import for_birds as birds
-from utils import for_cifar10 as cifar10
-from utils import for_dogs as dogs
 from utils import for_plankton as fplankton
-from utils import for_wildtrap as wildtrap
 from utils import model_training as mt
 from utils import prepare_train_test_data as pdata
-from utils import for_inaturalist as inature
-from utils import for_cifar100 as cifar100
 
 
 def ArgsCheck(args):
@@ -66,7 +60,7 @@ class LoadInputParameters:
         if string is None:
             string = ""
 
-        parser = argparse.ArgumentParser(description='Create Dataset')
+        parser = argparse.ArgumentParser(description='Train a model on Zoolake2 dataset')
 
         parser.add_argument('-datapaths', nargs='*',
                             default=['./data/1_zooplankton_0p5x/training/zooplankton_trainingset_2020.04.28/'],
@@ -120,8 +114,8 @@ class LoadInputParameters:
                                                     '"kaggle", "eilat", "rsmas", "birds", "dogs", "beetle", "wildtrap"')
 
         # For model training
-        parser.add_argument('-architecture', choices=['cnn', 'deit'],
-                            default='deit', help='Choose between different datasets "cnn", "deit"')
+        parser.add_argument('-architecture', choices=['efficientnet', 'densenet', 'mobilenet', 'inception', 'deit', 'vit'],
+                            default='deit', help='Choose the model architecture')
 
         parser.add_argument('-batch_size', type=int, default=16, help="Batch size for training")
         parser.add_argument('-image_size', type=int, default=224, help="Image size for training the model")
@@ -227,8 +221,7 @@ if __name__ == '__main__':
     # Loading Input parameters
     train_params = LoadInputParameters(initMode='args')
     train_params.CreateOutDir()
-    print('Loaded input parameters')
-    #
+
     loaded_data = None
 
     if train_params.params.dataset_name == 'zoolake':
@@ -247,39 +240,6 @@ if __name__ == '__main__':
             loaded_data = fplankton.CreateDataForPlankton()
             loaded_data.make_train_test_for_model(train_params, prep_data)
             loaded_data.create_data_loaders(train_params)
-
-    elif train_params.params.dataset_name == 'beetle':
-        prep_data = pdata.CreateDataset()
-        prep_data.LoadData_for_others(train_params)
-        prep_data.CreatedataSetsForOthers(train_params)
-
-        loaded_data = fplankton.CreateDataForPlankton()
-        loaded_data.make_train_test_for_others(prep_data)
-        loaded_data.create_data_loaders_for_others(train_params)
-
-    elif train_params.params.dataset_name == 'cifar10':
-        loaded_data = cifar10.CreateDataForCifar10()
-        loaded_data.make_train_test_for_cifar(train_params)
-
-    elif train_params.params.dataset_name == 'cifar100':
-        loaded_data = cifar100.CreateDataForCifar100()
-        loaded_data.make_train_test_for_cifar(train_params)
-
-    elif train_params.params.dataset_name == 'inature':
-        loaded_data = inature.CreateDataForinature()
-        loaded_data.make_train_test_for_inature(train_params)
-
-    elif train_params.params.dataset_name == 'wildtrap':
-        loaded_data = wildtrap.CreateDataForWildtrap()
-        loaded_data.make_train_test_for_wildtrap(train_params)
-
-    elif train_params.params.dataset_name == 'dogs':
-        loaded_data = dogs.CreateDataForDogs()
-        loaded_data.make_train_test_for_dogs(train_params)
-
-    elif train_params.params.dataset_name == 'birds':
-        loaded_data = birds.CreateDataForBirds()
-        loaded_data.make_train_test_for_birds(train_params)
 
     else:
         print('Choose correct dataset name')
