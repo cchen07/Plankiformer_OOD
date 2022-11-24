@@ -23,9 +23,7 @@ def ArgsCheck(args):
 
     if args.ttkind == 'image':
         args.compute_extrafeat = 'no'
-        print(
-            'User asked for computing extra features, but we set it to False, because we only do it for `mixed` '
-            'models')
+        print('User asked for computing extra features, but we set it to False, because we only do it for `mixed` models')
     return
 
 
@@ -42,11 +40,10 @@ class LoadInputParameters:
         self.model = None
         self.opt = None
         self.SetParameters(mode=initMode)
-
         return
 
     def SetParameters(self, mode='default'):
-        """ default, from args"""
+        """ default, from args """
         if mode == 'default':
             self.ReadArgs(string=None)
         elif mode == 'args':

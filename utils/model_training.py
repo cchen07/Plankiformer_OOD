@@ -898,6 +898,29 @@ class import_and_train_model:
                                                                                                   clf_report))
             f.close()
 
+            bias, MAE, MSE, RMSE, R2, weighted_recall, df_count = extra_metrics(target_label.tolist(), output_label)
+            ff = open(test_main.params.test_outpath + 'Single_test_report_extra_' + name + '.txt', 'w')
+            ff.write('\nbias\n\n{}\n\nMAE\n\n{}\n\nMSE\n\n{}\n\nRMSE\n\n{}\n\nR2\n\n{}\n\nweighted_recall\n\n{}\n'.format(bias, MAE, MSE, RMSE, R2, weighted_recall))
+            ff.close()
+
+            df_count.to_excel(test_main.params.test_outpath + 'Population_count.xlsx', index=True, header=True)
+
+            labels = np.unique(target_label)
+            unknown_index = np.where(labels=='unknown')[0][0]
+            labels_rm_unknown = np.delete(labels, unknown_index)
+
+            df_labels = pd.DataFrame(data=[target_label, output_label])
+            df_labels_rm_unknown = df_labels.drop(columns=df_labels.columns[df_labels.iloc[0] == 'unknown'])
+
+            accuracy_rm_unknown = accuracy_score(df_labels_rm_unknown.iloc[0].tolist(), df_labels_rm_unknown.iloc[1].tolist())
+            clf_report_rm_unknown = classification_report(target_label, output_label, labels=labels_rm_unknown)
+            f1_rm_unknown = f1_score(target_label, output_label, average='macro', labels=labels_rm_unknown)
+
+            fff = open(test_main.params.test_outpath + 'Single_test_report_rm_unknown_' + name + '.txt', 'w')
+            fff.write('\n Accuracy\n\n{}\n\nF1 Score\n\n{}\n\nClassification Report\n\n{}\n'.format(accuracy_rm_unknown, f1_rm_unknown,
+                                                                                                  clf_report_rm_unknown))
+            fff.close()
+
     def run_ensemble_prediction_on_unseen_with_y(self, test_main, data_loader, name):
         classes = np.load(test_main.params.main_param_path + '/classes.npy')
         Ensemble_prob = []
@@ -932,14 +955,14 @@ class import_and_train_model:
 
             target_label = np.array([classes[target[i]] for i in range(len(target))], dtype=object)
 
-            target_label_sorted = np.sort(target_label)
-            target_label_indices = np.argsort(target_label)
-            prob_sorted = prob[target_label_indices]
-            target_sorted = target[target_label_indices]
+            # target_label_sorted = np.sort(target_label)
+            # target_label_indices = np.argsort(target_label)
+            # prob_sorted = prob[target_label_indices]
+            # target_sorted = target[target_label_indices]
 
-            Ensemble_prob.append(prob_sorted)
-            Ensemble_GT.append(target_sorted)
-            Ensemble_GT_label.append(target_label_sorted)
+            Ensemble_prob.append(prob)
+            Ensemble_GT.append(target)
+            Ensemble_GT_label.append(target_label)
 
         Ens_DEIT_prob_max = []
         Ens_DEIT_label = []
@@ -1066,12 +1089,16 @@ class import_and_train_model:
             labels = np.unique(GT_label)
             unknown_index = np.where(labels=='unknown')[0][0]
             labels_rm_unknown = np.delete(labels, unknown_index)
-            
+
+            df_labels = pd.DataFrame(data=[GT_label, Ens_DEIT_label])
+            df_labels_rm_unknown = df_labels.drop(columns=df_labels.columns[df_labels.iloc[0] == 'unknown'])
+
+            accuracy_rm_unknown = accuracy_score(df_labels_rm_unknown.iloc[0].tolist(), df_labels_rm_unknown.iloc[1].tolist())
             clf_report_rm_unknown = classification_report(GT_label, Ens_DEIT_label, labels=labels_rm_unknown)
             f1_rm_unknown = f1_score(GT_label, Ens_DEIT_label, average='macro', labels=labels_rm_unknown)
 
             fff = open(test_main.params.test_outpath + 'Ensemble_test_report_rm_unknown_' + name2 + name + '.txt', 'w')
-            fff.write('\n Accuracy\n\n{}\n\nF1 Score\n\n{}\n\nClassification Report\n\n{}\n'.format(accuracy_model, f1_rm_unknown,
+            fff.write('\n Accuracy\n\n{}\n\nF1 Score\n\n{}\n\nClassification Report\n\n{}\n'.format(accuracy_rm_unknown, f1_rm_unknown,
                                                                                                   clf_report_rm_unknown))
             fff.close()
 
