@@ -1,5 +1,15 @@
 ## Plankiformer_OOD
 
+### Dependencies
+
+All required libraries are stored in `requirements.txt`
+
+To install:
+
+```python
+pip install -r requirements.txt
+```
+
 ### Repo Structure
 
 Public repository for Zoolake2.0 image classification in Out-of-Dataset (OOD) scenarios.
