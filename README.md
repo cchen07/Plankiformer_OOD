@@ -30,7 +30,7 @@ python3 main.py -datapaths $/path/of/data/ -outpath $/path/to/save/ -epochs 50 -
 
 There are lots of input commands that can be given to the script. To query them, use the `-h` flag (`python main.py -h`). 
 
-The ZooLake2.0 dataset can be downloaded [here](https://doi.org/10.25678/000C6M).
+The ZooLake2.0 dataset can be downloaded [here](https://doi.org/10.25678/000C6M) or [here](https://data.eawag.ch/dataset/data-for-producing-plankton-classifiers-that-are-robust-to-dataset-shift).
 
 ### Testing models
 
